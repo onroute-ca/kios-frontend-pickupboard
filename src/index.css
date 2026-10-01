@@ -27,3 +27,23 @@
 * {
   font-family: "Mulish", "Lexend", sans-serif;
 }
+
+.grid-cols-auto-fit-in-progress {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+}
+
+.grid-cols-auto-fit-ready {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+.grid-cols-auto-fit-in-progress {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+.grid-cols-auto-fit-ready {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
