@@ -1,14 +1,13 @@
 ﻿import { useState, useEffect, useRef } from "react";
 import { Client } from "@stomp/stompjs";
 
-export interface BackendOrder {
+export interface LivePickupOrder {
   orderId: number;
   orderNo: number;
   storeId: number;
   pickupTime: string;
   guestName: string;
   displayStatus: "IN_PROGRESS" | "READY" | string;
-  placedAt: number; // Internal timestamp for elapsed time
 }
 
 const WS_URL = "ws://localhost:5051/user-service/ws";
@@ -19,7 +18,7 @@ interface UseWebSocketOptions {
 }
 
 export const useWebSocket = (options?: UseWebSocketOptions) => {
-  const [orders, setOrders] = useState<Map<number, BackendOrder>>(new Map());
+  const [orders, setOrders] = useState<Map<number, LivePickupOrder>>(new Map());
   const [isConnected, setIsConnected] = useState(false);
   const optionsRef = useRef(options);
   useEffect(() => {
@@ -48,7 +47,6 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
                     newMap.set(evt.order.orderId, {
                       ...evt.order,
                       displayStatus: "IN_PROGRESS",
-                      placedAt: Date.now(),
                     });
                     return newMap;
                   });
@@ -68,13 +66,11 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
                         ...existing,
                         ...evt.order,
                         displayStatus: "READY",
-                        placedAt: Date.now(),
                       });
                     } else {
                       newMap.set(evt.order.orderId, {
                         ...evt.order,
                         displayStatus: "READY",
-                        placedAt: Date.now(),
                       });
                     }
                     return newMap;

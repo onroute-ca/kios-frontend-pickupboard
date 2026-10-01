@@ -1,26 +1,8 @@
-﻿import React, { useState, useEffect } from "react";
-import { Utensils, CheckCircle2, Clock, Monitor } from "lucide-react";
+﻿import React from "react";
+import { Utensils, CheckCircle2, Clock } from "lucide-react";
 import { useWebSocket } from "../../hooks/useWebSocket";
 
-const getSourceIcon = () => {
-  return <Monitor className="text-brand h-6 w-6" />;
-};
-
-const formatTime = (ms: number) => {
-  const totalSeconds = Math.floor(ms / 1000);
-  const m = Math.floor(totalSeconds / 60);
-  const s = totalSeconds % 60;
-  return `${m}:${s.toString().padStart(2, "0")}`;
-};
-
 const PickupBoard: React.FC = () => {
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
   const { orders, isConnected } = useWebSocket();
 
   const ordersList = Array.from(orders.values());
@@ -43,12 +25,16 @@ const PickupBoard: React.FC = () => {
         </div>
 
         {/* Dynamic decorative elements */}
-        <div className={`flex items-center gap-3 rounded-full border px-6 py-3 ${isConnected ? "border-project-primary-bg-light bg-project-primary-light" : "border-red-100 bg-red-50"}`}>
+        <div
+          className={`flex items-center gap-3 rounded-full border px-6 py-3 ${isConnected ? "border-[var(--project-primary-bg-light)] bg-[var(--project-primary-light)]" : "border-red-100 bg-red-50"}`}
+        >
           <div
             className={`h-4 w-4 rounded-full ${isConnected ? "bg-brand" : "bg-red-500"}`}
             title={isConnected ? "Connected to WS" : "Disconnected"}
           />
-          <span className={`text-lg font-extrabold tracking-widest uppercase ${isConnected ? "text-brand-hover" : "text-red-600"}`}>
+          <span
+            className={`text-lg font-extrabold tracking-widest uppercase ${isConnected ? "text-brand-hover" : "text-red-600"}`}
+          >
             {isConnected ? "Live System" : "Offline"}
           </span>
         </div>
@@ -74,30 +60,14 @@ const PickupBoard: React.FC = () => {
             ) : (
               <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
                 {inProgressOrders.map((order) => {
-                  const elapsedMs = now - (order.placedAt || now);
                   return (
                     <div
                       key={order.orderId}
-                      className="border-primary-border flex flex-col overflow-hidden rounded-[10px] border bg-white shadow-[0_2px_8px_rgba(0,0,0,0.03)]"
+                      className="border-primary-border flex flex-col items-center justify-center overflow-hidden rounded-[10px] border bg-white p-8 py-10 shadow-[0_2px_8px_rgba(0,0,0,0.03)]"
                     >
-                      {/* Header */}
-                      <div className="flex items-center justify-between bg-[#fafafa] px-6 py-4">
-                        <div className="flex items-center gap-4">
-                          <span className="text-primary-text text-5xl font-black">
-                            {order.orderNo ?? order.orderId}
-                          </span>
-                          <div className="border-project-primary-bg-light bg-project-primary-light flex items-center gap-2 rounded-md border px-3 py-1.5">
-                            {getSourceIcon()}
-                            <span className="text-brand-hover text-lg font-bold tracking-wide uppercase">
-                              {order.guestName || "Guest"}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="text-brand-hover flex items-center gap-2 font-mono text-2xl font-bold">
-                          <Clock className="h-6 w-6" />
-                          {formatTime(elapsedMs)}
-                        </div>
-                      </div>
+                      <span className="text-primary-text text-8xl font-black tracking-tighter">
+                        {order.orderNo ?? order.orderId}
+                      </span>
                     </div>
                   );
                 })}
@@ -130,27 +100,26 @@ const PickupBoard: React.FC = () => {
                   return (
                     <div
                       key={order.orderId}
-                      className="border-primary-border relative flex flex-col overflow-hidden rounded-[10px] border bg-white shadow-[0_2px_8px_rgba(0,0,0,0.03)]"
+                      className="border-primary-border relative flex flex-col items-center justify-center overflow-hidden rounded-[10px] border bg-white p-8 py-10 shadow-[0_2px_8px_rgba(0,0,0,0.03)]"
                     >
-                      {/* Decorative background icon */}
-                      <div className="pointer-events-none absolute -top-6 -right-6 opacity-[0.05]">
-                        <CheckCircle2 className="text-brand h-48 w-48" strokeWidth={1} />
+                      {/* Decorative Color Wave Background */}
+                      <div className="pointer-events-none absolute right-0 bottom-0 left-0 h-1/2 opacity-[0.08]">
+                        <svg
+                          viewBox="0 0 1440 320"
+                          preserveAspectRatio="none"
+                          className="h-full w-full"
+                        >
+                          <path
+                            fill="currentColor"
+                            className="text-brand"
+                            d="M0,160L48,176C96,192,192,224,288,213.3C384,203,480,149,576,144C672,139,768,181,864,197.3C960,213,1056,203,1152,176C1248,149,1344,107,1392,85.3L1440,64L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"
+                          ></path>
+                        </svg>
                       </div>
 
-                      {/* Header */}
-                      <div className="relative z-10 flex items-center justify-between bg-[#fafafa] px-6 py-4">
-                        <div className="flex items-center gap-4">
-                          <span className="text-primary-text text-5xl font-black">
-                            {order.orderNo ?? order.orderId}
-                          </span>
-                          <div className="border-project-primary-bg-light bg-project-primary-light flex items-center gap-2 rounded-md border px-3 py-1.5">
-                            {getSourceIcon()}
-                            <span className="text-brand-hover text-lg font-bold tracking-wide uppercase">
-                              {order.guestName || "Guest"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+                      <span className="text-brand-hover relative z-10 text-8xl font-black tracking-tighter">
+                        {order.orderNo ?? order.orderId}
+                      </span>
                     </div>
                   );
                 })}
@@ -164,4 +133,3 @@ const PickupBoard: React.FC = () => {
 };
 
 export default PickupBoard;
-
