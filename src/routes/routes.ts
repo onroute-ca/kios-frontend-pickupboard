@@ -1,0 +1,3 @@
+export const MAIN_ROUTE = "/";
+
+export const LOGIN = "/login";

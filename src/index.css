@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+@theme {
+  /* Core Brand Colors */
+  --color-brand: #7bc144;
+  --color-brand-hover: #69a738;
+
+  --background: #ffffff;
+  --foreground: #0f172a;
+
+  /* Project Primary mapped to brand green */
+  --project-primary-color: var(--color-brand);
+  --project-primary-light: #f3faed;
+  --project-primary-bg-light: #e4f4d8;
+  --primary-icon-bg-color: var(--color-brand);
+
+  /* Text Colors */
+  --color-primary-text: #0f172a;
+  --color-body-text: #334155;
+  --color-secondary-text: #64748b;
+  --color-muted-text: #94a3b8;
+
+  /* Borders */
+  --color-primary-border: #cbd6e2;
+}
+
+* {
+  font-family: "Mulish", "Lexend", sans-serif;
+}
+
+.grid-cols-auto-fit-in-progress {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+}
+
+.grid-cols-auto-fit-ready {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+.grid-cols-auto-fit-in-progress {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+.grid-cols-auto-fit-ready {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
