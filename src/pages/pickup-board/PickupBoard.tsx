@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Utensils, CheckCircle2, Clock, Volume2, VolumeX } from "lucide-react";
+import { CheckCircle2, Clock, Volume2, VolumeX } from "lucide-react";
+import logo from "../../assets/onroute-logo.svg";
 import { IconBtn } from "../../components/CustomButton";
 import { useWebSocket } from "../../hooks/useWebSocket";
 import { playNewOrderSound } from "../../utils/sound";
-import { useAppSelector } from "../../store/hooks";
 
 const PickupBoard: React.FC = () => {
-  const { storeId, storeName } = useAppSelector((state) => state.auth);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const soundEnabledRef = useRef(soundEnabled);
 
@@ -35,24 +34,8 @@ const PickupBoard: React.FC = () => {
     <div className="text-primary-text flex min-h-screen flex-col bg-[#f8f9fa] font-sans">
       {/* Header - Scaled up for 1080p display from a distance */}
       <header className="border-primary-border flex shrink-0 items-center justify-between border-b bg-white px-8 py-6">
-        <div className="flex items-center gap-6">
-          <div className="bg-brand flex h-20 w-20 items-center justify-center rounded-xl">
-            <Utensils className="h-10 w-10 text-white" />
-          </div>
-          <div>
-            <h1
-              className={`text-primary-text text-5xl font-extrabold tracking-tight ${storeName || storeId ? "leading-none" : "leading-tight"}`}
-            >
-              Order Status
-            </h1>
-            {(storeName || storeId) && (
-              <p className="text-muted-text mt-1 text-xl font-medium">
-                {storeName && <span className="text-primary-text font-bold">{storeName}</span>}
-                {storeName && storeId && " · "}
-                {storeId && `Store #${storeId}`}
-              </p>
-            )}
-          </div>
+        <div className="flex h-20 items-center">
+          <img src={logo} alt="Onroute" className="h-16 w-auto object-contain" />
         </div>
 
         {/* Dynamic decorative elements */}
