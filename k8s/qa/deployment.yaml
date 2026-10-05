@@ -1,0 +1,88 @@
+# Kios Frontend Pickupboard — Deployment + Service (qa)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kios-frontend-pickupboard-qa
+  namespace: pickupboard-qa
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: kios-frontend-pickupboard-qa
+  template:
+    metadata:
+      labels:
+        app: kios-frontend-pickupboard-qa
+      annotations:
+        prometheus.io/scrape: "false"
+    spec:
+      # Operational node pool (same as order / user services)
+      nodeSelector:
+        agentpool: operational
+      tolerations:
+        - key: "workload"
+          operator: "Equal"
+          value: "operational"
+          effect: "NoSchedule"
+      containers:
+        - name: kios-frontend-pickupboard-qa
+          image: qakiosacr.azurecr.io/kios-frontend-pickupboard:v1.0
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+              name: http
+          # Static file serving is light — small requests/limits
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 12
+            timeoutSeconds: 5
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+
+---
+# Service for the frontend
+apiVersion: v1
+kind: Service
+metadata:
+  name: kios-frontend-pickupboard-qa
+  namespace: pickupboard-qa
+  labels:
+    app: kios-frontend-pickupboard-qa
+spec:
+  type: ClusterIP
+  selector:
+    app: kios-frontend-pickupboard-qa
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+      name: http

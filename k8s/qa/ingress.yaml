@@ -1,0 +1,25 @@
+# Ingress for the frontend pickupboard (qa)
+# Served under /pickupboard on the operational-nginx controller (same LB as the
+# order / user services). Vite base and React Router basename are both /pickupboard/.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kios-frontend-pickupboard-qa
+  namespace: pickupboard-qa
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    # Strip the prefix: the pod's nginx serves the app from "/"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: operational-nginx
+  rules:
+    - http:
+        paths:
+          - path: /pickupboard(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: kios-frontend-pickupboard-qa
+                port:
+                  number: 80

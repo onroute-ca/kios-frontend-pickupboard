@@ -1,0 +1,59 @@
+# Frontend Pickupboard — HPA + PDB (preprod)
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: kios-frontend-pickupboard-preprod-hpa
+  namespace: pickupboard-preprod
+  labels:
+    app: kios-frontend-pickupboard-preprod
+    component: autoscaler
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: kios-frontend-pickupboard-preprod
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 80
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 30
+      selectPolicy: Max
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: kios-frontend-pickupboard-preprod-pdb
+  namespace: pickupboard-preprod
+  labels:
+    app: kios-frontend-pickupboard-preprod
+    component: disruption-budget
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: kios-frontend-pickupboard-preprod
