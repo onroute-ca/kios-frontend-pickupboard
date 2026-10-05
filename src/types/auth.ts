@@ -9,6 +9,7 @@ export interface LoginResponse {
   plazaId: number;
   plazaName: string;
   storeId: number;
+  storeName: string;
   deviceId: string;
   accessToken: string;
   refreshToken: string;

@@ -3,8 +3,10 @@ import { Utensils, CheckCircle2, Clock, Volume2, VolumeX } from "lucide-react";
 import { IconBtn } from "../../components/CustomButton";
 import { useWebSocket } from "../../hooks/useWebSocket";
 import { playNewOrderSound } from "../../utils/sound";
+import { useAppSelector } from "../../store/hooks";
 
 const PickupBoard: React.FC = () => {
+  const { storeId, storeName } = useAppSelector((state) => state.auth);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const soundEnabledRef = useRef(soundEnabled);
 
@@ -12,7 +14,14 @@ const PickupBoard: React.FC = () => {
     soundEnabledRef.current = soundEnabled;
   }, [soundEnabled]);
 
-  const { orders, isConnected } = useWebSocket({
+  const {
+    orders,
+    isConnected,
+    connectionStatus,
+    reconnectAttempt,
+    maxReconnectAttempts,
+    reconnect,
+  } = useWebSocket({
     onOrderReady: () => {
       if (soundEnabledRef.current) playNewOrderSound();
     },
@@ -31,27 +40,61 @@ const PickupBoard: React.FC = () => {
             <Utensils className="h-10 w-10 text-white" />
           </div>
           <div>
-            <h1 className="text-primary-text text-5xl leading-tight font-extrabold tracking-tight">
+            <h1
+              className={`text-primary-text text-5xl font-extrabold tracking-tight ${storeName || storeId ? "leading-none" : "leading-tight"}`}
+            >
               Order Status
             </h1>
+            {(storeName || storeId) && (
+              <p className="text-muted-text mt-1 text-xl font-medium">
+                {storeName && <span className="text-primary-text font-bold">{storeName}</span>}
+                {storeName && storeId && " · "}
+                {storeId && `Store #${storeId}`}
+              </p>
+            )}
           </div>
         </div>
 
         {/* Dynamic decorative elements */}
         <div className="flex items-center gap-4">
-          <div
-            className={`flex h-[52px] items-center gap-3 rounded-full border px-6 py-3 ${isConnected ? "border-[var(--project-primary-bg-light)] bg-[var(--project-primary-light)]" : "border-red-100 bg-red-50"}`}
+          <button
+            type="button"
+            onClick={connectionStatus === "failed" ? reconnect : undefined}
+            disabled={connectionStatus !== "failed"}
+            title={connectionStatus === "failed" ? "Tap to reconnect" : undefined}
+            className={`flex h-[52px] items-center gap-3 rounded-full border px-6 py-3 ${
+              isConnected
+                ? "border-[var(--project-primary-bg-light)] bg-[var(--project-primary-light)]"
+                : connectionStatus === "failed"
+                  ? "cursor-pointer border-red-100 bg-red-50"
+                  : "border-amber-100 bg-amber-50"
+            }`}
           >
             <div
-              className={`h-4 w-4 rounded-full ${isConnected ? "bg-brand" : "bg-red-500"}`}
-              title={isConnected ? "Connected to WS" : "Disconnected"}
+              className={`h-4 w-4 rounded-full ${
+                isConnected
+                  ? "bg-brand"
+                  : connectionStatus === "failed"
+                    ? "bg-red-500"
+                    : "animate-pulse bg-amber-500"
+              }`}
             />
             <span
-              className={`text-lg font-extrabold tracking-widest uppercase ${isConnected ? "text-brand-hover" : "text-red-600"}`}
+              className={`text-lg font-extrabold tracking-widest uppercase ${
+                isConnected
+                  ? "text-brand-hover"
+                  : connectionStatus === "failed"
+                    ? "text-red-600"
+                    : "text-amber-600"
+              }`}
             >
-              {isConnected ? "Live" : "Offline"}
+              {connectionStatus === "connected" && "Live"}
+              {connectionStatus === "connecting" && "Connecting"}
+              {connectionStatus === "reconnecting" &&
+                `Reconnecting ${reconnectAttempt}/${maxReconnectAttempts}`}
+              {connectionStatus === "failed" && "Offline · Retry"}
             </span>
-          </div>
+          </button>
           <IconBtn
             icon={soundEnabled ? Volume2 : VolumeX}
             title={soundEnabled ? "Mute Sounds" : "Unmute Sounds"}
@@ -83,22 +126,15 @@ const PickupBoard: React.FC = () => {
                 <p className="text-3xl font-medium">Waiting for live orders...</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+              <div className="grid grid-cols-4 gap-3">
                 {inProgressOrders.map((order) => {
                   return (
                     <div
                       key={order.orderId}
-                      className="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white p-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
+                      className="border-primary-border flex min-w-0 items-center justify-center rounded-xl border bg-white py-7 shadow-sm"
                     >
-                      <div className="absolute top-0 left-0 h-full w-2 bg-[#f59e0b]"></div>
-                      <div className="absolute -top-10 -right-10 h-32 w-32 rounded-full bg-amber-50 opacity-60 blur-2xl"></div>
-                      <div className="mb-6 flex items-start justify-between">
-                        <span className="relative z-10 text-6xl font-extrabold tracking-tight text-gray-900">
-                          #{order.orderNo ?? order.orderId}
-                        </span>
-                      </div>
-                      <span className="relative z-10 flex items-center gap-3 text-2xl font-bold text-gray-600">
-                        {order.guestName || "Guest"}
+                      <span className="text-4xl font-bold tracking-tight text-[#0f172a]">
+                        {order.orderNo ?? order.orderId}
                       </span>
                     </div>
                   );
@@ -127,22 +163,30 @@ const PickupBoard: React.FC = () => {
                 <p className="text-3xl font-medium">No ready orders</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+              <div className="grid grid-cols-4 gap-3">
                 {readyOrders.map((order) => {
                   return (
                     <div
                       key={order.orderId}
-                      className="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white p-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
+                      className="border-primary-border relative flex flex-col items-center justify-center overflow-hidden rounded-xl border bg-white p-8 py-7 shadow-sm"
                     >
-                      <div className="absolute top-0 left-0 h-full w-2 bg-[#7ab838]"></div>
-                      <div className="absolute -top-10 -right-10 h-32 w-32 rounded-full bg-[#eef7ee] opacity-60 blur-2xl"></div>
-                      <div className="mb-6 flex items-start justify-between">
-                        <span className="relative z-10 text-6xl font-extrabold tracking-tight text-gray-900">
-                          #{order.orderNo ?? order.orderId}
-                        </span>
+                      {/* Decorative Color Wave Background */}
+                      <div className="pointer-events-none absolute right-0 bottom-0 left-0 h-1/2 opacity-[0.08]">
+                        <svg
+                          viewBox="0 0 1440 320"
+                          preserveAspectRatio="none"
+                          className="h-full w-full"
+                        >
+                          <path
+                            fill="currentColor"
+                            className="text-brand"
+                            d="M0,160L48,176C96,192,192,224,288,213.3C384,203,480,149,576,144C672,139,768,181,864,197.3C960,213,1056,203,1152,176C1248,149,1344,107,1392,85.3L1440,64L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"
+                          ></path>
+                        </svg>
                       </div>
-                      <span className="relative z-10 flex items-center gap-3 text-2xl font-bold text-gray-600">
-                        {order.guestName || "Guest"}
+
+                      <span className="text-brand-hover relative z-10 text-4xl font-black tracking-tighter">
+                        {order.orderNo ?? order.orderId}
                       </span>
                     </div>
                   );

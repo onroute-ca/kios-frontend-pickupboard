@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { IconButton } from "@mui/material";
@@ -7,17 +7,27 @@ import { CustomTextField } from "../../components/FormFields";
 import { CustomButton } from "../../components/CustomButton";
 import { MAIN_ROUTE } from "../../routes/routes";
 import { useLoginMutation } from "../../services/auth/authService";
-import { useAppDispatch } from "../../store/hooks";
+import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { loginSuccess } from "../../store/authSlice";
+import { toast } from "react-toastify";
 
-export default function Login() {
+const Login: React.FC = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ username: "", password: "" });
   const [formErrors, setFormErrors] = useState({ username: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
 
-  const { mutate: loginMutation, isPending: isLoginLoading } = useLoginMutation();
   const dispatch = useAppDispatch();
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
+
+  const { mutate: loginMutation, isPending: isLoginLoading } = useLoginMutation();
+
+  // If already authenticated, redirect to board
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(MAIN_ROUTE, { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -56,6 +66,7 @@ export default function Login() {
             refreshTokenExpiresAt: data.refreshTokenExpiry,
             username: data.username,
             storeId: data.storeId,
+            storeName: data.storeName,
             plazaId: data.plazaId,
             plazaName: data.plazaName,
             deviceId: data.deviceId,
@@ -67,6 +78,7 @@ export default function Login() {
             idleCarouselTimeout: data.idleCarouselTimeout,
           }),
         );
+        toast.success("Login successful!");
 
         navigate(MAIN_ROUTE);
       },
@@ -150,4 +162,6 @@ export default function Login() {
       </div>
     </div>
   );
-}
+};
+
+export default Login;

@@ -13,6 +13,19 @@ export interface LivePickupOrder {
 
 const WS_URL = "wss://api-dev.onroute.ca/user-service/ws";
 
+// Reconnect tuning: exponential backoff (1s, 2s, 4s ... capped at 30s) with jitter
+const RECONNECT_BASE_DELAY = 1000;
+const RECONNECT_MAX_DELAY = 30000;
+const MAX_RECONNECT_ATTEMPTS = 10;
+const CONNECTION_TIMEOUT = 10000;
+
+export type ConnectionStatus = "connecting" | "connected" | "reconnecting" | "failed";
+
+const getReconnectDelay = (attempt: number) => {
+  const backoff = Math.min(RECONNECT_BASE_DELAY * 2 ** (attempt - 1), RECONNECT_MAX_DELAY);
+  return backoff + Math.random() * 1000;
+};
+
 interface UseWebSocketOptions {
   onNewOrder?: () => void;
   onOrderReady?: () => void;
@@ -20,8 +33,11 @@ interface UseWebSocketOptions {
 
 export const useWebSocket = (options?: UseWebSocketOptions) => {
   const [orders, setOrders] = useState<Map<number, LivePickupOrder>>(new Map());
-  const [isConnected, setIsConnected] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("connecting");
+  const [reconnectAttempt, setReconnectAttempt] = useState(0);
   const clientRef = useRef<Client | null>(null);
+  const reconnectRef = useRef<() => void>(() => {});
+  const isConnected = connectionStatus === "connected";
 
   const auth = useAppSelector((state) => state.auth);
   const storeId = auth.storeId?.toString() || "6100131";
@@ -33,14 +49,71 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
   }, [options]);
 
   useEffect(() => {
+    let attempts = 0;
+    let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+    let disposed = false;
+
+    const clearReconnectTimer = () => {
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = undefined;
+      }
+    };
+
+    // Tear down the current socket (if any) and open a fresh one
+    const restart = async () => {
+      await client.deactivate();
+      if (!disposed) client.activate();
+    };
+
+    const scheduleReconnect = () => {
+      if (disposed || reconnectTimer) return;
+
+      if (attempts >= MAX_RECONNECT_ATTEMPTS) {
+        console.error(`WebSocket reconnect failed after ${attempts} attempts`);
+        setConnectionStatus("failed");
+        client.deactivate();
+        return;
+      }
+
+      attempts += 1;
+      const delay = getReconnectDelay(attempts);
+      setReconnectAttempt(attempts);
+      setConnectionStatus("reconnecting");
+      console.warn(
+        `WebSocket disconnected. Reconnect attempt ${attempts}/${MAX_RECONNECT_ATTEMPTS} in ${Math.round(delay)}ms`,
+      );
+
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = undefined;
+        restart();
+      }, delay);
+    };
+
+    // Manual / event-driven reconnect: resets the attempt counter and retries immediately
+    const reconnectNow = () => {
+      if (disposed || client.connected) return;
+      clearReconnectTimer();
+      attempts = 0;
+      setReconnectAttempt(0);
+      setConnectionStatus("connecting");
+      restart();
+    };
+    reconnectRef.current = reconnectNow;
+
     const client = new Client({
       brokerURL: WS_URL,
       connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
-      reconnectDelay: 5000,
+      // Built-in fixed-delay reconnect is disabled; backoff is handled by scheduleReconnect
+      reconnectDelay: 0,
+      connectionTimeout: CONNECTION_TIMEOUT,
       heartbeatIncoming: 10000,
       heartbeatOutgoing: 10000,
       onConnect: () => {
-        setIsConnected(true);
+        clearReconnectTimer();
+        attempts = 0;
+        setReconnectAttempt(0);
+        setConnectionStatus("connected");
         console.log("Connected to STOMP WebSocket (Display)");
 
         client.subscribe(`/topic/stores/${storeId}/orderUpdates/display`, (message) => {
@@ -99,17 +172,38 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
           }
         });
       },
-      onDisconnect: () => setIsConnected(false),
-      onWebSocketClose: () => setIsConnected(false),
+      onStompError: (frame) => {
+        console.error("STOMP error", frame.headers["message"], frame.body);
+      },
+      onWebSocketClose: () => {
+        // client.active is false when we closed it ourselves (unmount / restart)
+        if (disposed || !client.active) return;
+        scheduleReconnect();
+      },
     });
 
+    // Retry right away when the network comes back or the tab becomes visible again
+    const handleOnline = () => reconnectNow();
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") reconnectNow();
+    };
+    window.addEventListener("online", handleOnline);
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    setConnectionStatus("connecting");
     client.activate();
     clientRef.current = client;
 
     return () => {
+      disposed = true;
+      clearReconnectTimer();
+      window.removeEventListener("online", handleOnline);
+      document.removeEventListener("visibilitychange", handleVisibility);
       client.deactivate();
     };
   }, [storeId, token]);
+
+  const reconnect = () => reconnectRef.current();
 
   const clearAll = () => {
     if (window.confirm("Are you sure you want to clear all orders?")) {
@@ -120,6 +214,10 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
   return {
     orders,
     isConnected,
+    connectionStatus,
+    reconnectAttempt,
+    maxReconnectAttempts: MAX_RECONNECT_ATTEMPTS,
+    reconnect,
     clearAll,
   };
 };

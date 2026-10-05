@@ -8,6 +8,7 @@ export interface AuthState {
   refreshTokenExpiresAt: string | null;
   username: string | null;
   storeId: number | null;
+  storeName: string | null;
   plazaId: number | null;
   plazaName: string | null;
   deviceId: string | null;
@@ -27,6 +28,7 @@ const initialState: AuthState = {
   refreshTokenExpiresAt: null,
   username: null,
   storeId: null,
+  storeName: null,
   plazaId: null,
   plazaName: null,
   deviceId: null,
@@ -52,6 +54,7 @@ const authSlice = createSlice({
         refreshTokenExpiresAt,
         username,
         storeId,
+        storeName,
         plazaId,
         plazaName,
         deviceId,
@@ -70,6 +73,7 @@ const authSlice = createSlice({
       state.refreshTokenExpiresAt = refreshTokenExpiresAt;
       state.username = username;
       state.storeId = storeId;
+      state.storeName = storeName;
       state.plazaId = plazaId;
       state.plazaName = plazaName;
       state.deviceId = deviceId;
@@ -88,6 +92,7 @@ const authSlice = createSlice({
       state.refreshTokenExpiresAt = null;
       state.username = null;
       state.storeId = null;
+      state.storeName = null;
       state.plazaId = null;
       state.plazaName = null;
       state.deviceId = null;

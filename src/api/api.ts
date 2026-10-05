@@ -143,6 +143,7 @@ allApis.forEach((apiInstance) => {
                 refreshTokenExpiresAt: data.refreshTokenExpiry,
                 username: data.username,
                 storeId: data.storeId,
+                storeName: data.storeName,
                 plazaId: data.plazaId,
                 plazaName: data.plazaName,
                 deviceId: data.deviceId,
