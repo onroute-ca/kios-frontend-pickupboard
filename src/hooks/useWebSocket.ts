@@ -11,7 +11,7 @@ export interface LivePickupOrder {
   placedAt: number; // Internal timestamp for elapsed time
 }
 
-const WS_URL = "wss://api-dev.onroute.ca/user-service/ws";
+const WS_URL = import.meta.env.VITE_WEBSOCKET_URL as string | undefined;
 
 // Reconnect tuning: exponential backoff (1s, 2s, 4s ... capped at 30s) with jitter
 const RECONNECT_BASE_DELAY = 1000;
@@ -49,6 +49,12 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
   }, [options]);
 
   useEffect(() => {
+    if (!WS_URL) {
+      console.error("VITE_WEBSOCKET_URL is not configured");
+      setConnectionStatus("failed");
+      return;
+    }
+
     let attempts = 0;
     let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
     let disposed = false;
