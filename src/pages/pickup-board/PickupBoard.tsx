@@ -27,7 +27,7 @@ const PickupBoard: React.FC = () => {
       {/* Header - Scaled up for 1080p display from a distance */}
       <header className="border-primary-border flex shrink-0 items-center justify-between border-b bg-white px-8 py-6">
         <div className="flex items-center gap-6">
-          <div className="bg-brand flex h-20 w-20 items-center justify-center rounded-xl shadow-sm">
+          <div className="bg-brand flex h-20 w-20 items-center justify-center rounded-xl">
             <Utensils className="h-10 w-10 text-white" />
           </div>
           <div>
@@ -65,7 +65,7 @@ const PickupBoard: React.FC = () => {
       {/* Main Grid Area */}
       <main className="grid h-[calc(100vh-130px)] flex-1 grid-cols-2 gap-8 overflow-hidden p-8">
         {/* In Progress Column */}
-        <section className="border-primary-border flex h-full flex-col overflow-hidden rounded-[10px] border bg-white shadow-sm">
+        <section className="border-primary-border flex h-full flex-col overflow-hidden rounded-[10px] border bg-white">
           <div className="border-primary-border flex shrink-0 items-center justify-between border-b bg-white px-6 py-5">
             <div className="flex items-center gap-4">
               <div className="h-10 w-2 rounded-full bg-[#f59e0b]"></div>
@@ -88,7 +88,7 @@ const PickupBoard: React.FC = () => {
                   return (
                     <div
                       key={order.orderId}
-                      className="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white p-8 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
+                      className="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white p-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
                     >
                       <div className="absolute top-0 left-0 h-full w-2 bg-[#f59e0b]"></div>
                       <div className="absolute -top-10 -right-10 h-32 w-32 rounded-full bg-amber-50 opacity-60 blur-2xl"></div>
@@ -109,7 +109,7 @@ const PickupBoard: React.FC = () => {
         </section>
 
         {/* Ready For Pick Up Column */}
-        <section className="border-primary-border flex h-full flex-col overflow-hidden rounded-[10px] border bg-white shadow-sm">
+        <section className="border-primary-border flex h-full flex-col overflow-hidden rounded-[10px] border bg-white">
           <div className="border-primary-border flex shrink-0 items-center justify-between border-b bg-white px-6 py-5">
             <div className="flex items-center gap-4">
               <div className="bg-brand h-10 w-2 rounded-full"></div>
@@ -132,7 +132,7 @@ const PickupBoard: React.FC = () => {
                   return (
                     <div
                       key={order.orderId}
-                      className="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white p-8 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
+                      className="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white p-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
                     >
                       <div className="absolute top-0 left-0 h-full w-2 bg-[#7ab838]"></div>
                       <div className="absolute -top-10 -right-10 h-32 w-32 rounded-full bg-[#eef7ee] opacity-60 blur-2xl"></div>
