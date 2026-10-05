@@ -1,34 +1,41 @@
-﻿import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useAppSelector } from "../store/hooks";
 import { Client } from "@stomp/stompjs";
 
 export interface LivePickupOrder {
   orderId: number;
   orderNo: number;
   storeId: number;
-  pickupTime: string;
   guestName: string;
   displayStatus: "IN_PROGRESS" | "READY" | string;
+  placedAt: number; // Internal timestamp for elapsed time
 }
 
-const WS_URL = "ws://localhost:5051/user-service/ws";
-const STORE_ID = "6100131";
+const WS_URL = "wss://api-dev.onroute.ca/user-service/ws";
 
 interface UseWebSocketOptions {
+  onNewOrder?: () => void;
   onOrderReady?: () => void;
 }
 
 export const useWebSocket = (options?: UseWebSocketOptions) => {
   const [orders, setOrders] = useState<Map<number, LivePickupOrder>>(new Map());
   const [isConnected, setIsConnected] = useState(false);
+  const clientRef = useRef<Client | null>(null);
+
+  const auth = useAppSelector((state) => state.auth);
+  const storeId = auth.storeId?.toString() || "6100131";
+  const token = auth.authToken;
+
   const optionsRef = useRef(options);
   useEffect(() => {
     optionsRef.current = options;
   }, [options]);
-  const clientRef = useRef<Client | null>(null);
 
   useEffect(() => {
     const client = new Client({
       brokerURL: WS_URL,
+      connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
       reconnectDelay: 5000,
       heartbeatIncoming: 10000,
       heartbeatOutgoing: 10000,
@@ -36,7 +43,7 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
         setIsConnected(true);
         console.log("Connected to STOMP WebSocket (Display)");
 
-        client.subscribe(`/topic/stores/${STORE_ID}/orderUpdates/display`, (message) => {
+        client.subscribe(`/topic/stores/${storeId}/orderUpdates/display`, (message) => {
           try {
             const payload = JSON.parse(message.body);
             if (payload.events && Array.isArray(payload.events)) {
@@ -44,9 +51,17 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
                 if (evt.eventType === "ORDER_FIRED" && evt.order) {
                   setOrders((prev) => {
                     const newMap = new Map(prev);
-                    newMap.set(evt.order.orderId, {
-                      ...evt.order,
+                    const orderData = evt.order;
+                    const existing = newMap.get(orderData.orderId);
+
+                    if (!existing && optionsRef.current?.onNewOrder) {
+                      optionsRef.current.onNewOrder();
+                    }
+
+                    newMap.set(orderData.orderId, {
+                      ...orderData,
                       displayStatus: "IN_PROGRESS",
+                      placedAt: existing?.placedAt || Date.now(),
                     });
                     return newMap;
                   });
@@ -55,10 +70,10 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
                     const newMap = new Map(prev);
                     const existing = newMap.get(evt.order.orderId);
 
-                    if (existing && existing.displayStatus !== "READY") {
-                      if (optionsRef.current?.onOrderReady) optionsRef.current.onOrderReady();
-                    } else if (!existing) {
-                      if (optionsRef.current?.onOrderReady) optionsRef.current.onOrderReady();
+                    if (!existing || existing.displayStatus !== "READY") {
+                      if (optionsRef.current?.onOrderReady) {
+                        optionsRef.current.onOrderReady();
+                      }
                     }
 
                     if (existing) {
@@ -71,6 +86,7 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
                       newMap.set(evt.order.orderId, {
                         ...evt.order,
                         displayStatus: "READY",
+                        placedAt: Date.now(),
                       });
                     }
                     return newMap;
@@ -93,7 +109,17 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
     return () => {
       client.deactivate();
     };
-  }, []);
+  }, [storeId, token]);
 
-  return { orders, isConnected };
+  const clearAll = () => {
+    if (window.confirm("Are you sure you want to clear all orders?")) {
+      setOrders(new Map());
+    }
+  };
+
+  return {
+    orders,
+    isConnected,
+    clearAll,
+  };
 };

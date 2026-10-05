@@ -6,14 +6,18 @@ import logo from "../../assets/onroute-logo.svg";
 import { CustomTextField } from "../../components/FormFields";
 import { CustomButton } from "../../components/CustomButton";
 import { MAIN_ROUTE } from "../../routes/routes";
+import { useLoginMutation } from "../../services/auth/authService";
+import { useAppDispatch } from "../../store/hooks";
+import { loginSuccess } from "../../store/authSlice";
 
 export default function Login() {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({ email: "", password: "" });
-  const [formErrors, setFormErrors] = useState({ email: "", password: "" });
+  const [formData, setFormData] = useState({ username: "", password: "" });
+  const [formErrors, setFormErrors] = useState({ username: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
-  // Simulated loading states based on your snippet
-  const [isLoginLoading, setIsLoginLoading] = useState(false);
+
+  const { mutate: loginMutation, isPending: isLoginLoading } = useLoginMutation();
+  const dispatch = useAppDispatch();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -24,10 +28,10 @@ export default function Login() {
     }
   };
 
-  const handleStandardLogin = () => {
+  const handleStandardLogin = async () => {
     // Basic validation example
-    if (!formData.email) {
-      setFormErrors((prev) => ({ ...prev, email: "Email is required" }));
+    if (!formData.username) {
+      setFormErrors((prev) => ({ ...prev, username: "Username is required" }));
       return;
     }
     if (!formData.password) {
@@ -35,12 +39,41 @@ export default function Login() {
       return;
     }
 
-    setIsLoginLoading(true);
-    // Simulate authentication API call
-    setTimeout(() => {
-      setIsLoginLoading(false);
-      navigate(MAIN_ROUTE);
-    }, 1000);
+    const payload = {
+      username: formData.username,
+      password: formData.password,
+      deviceType: "TABLET",
+    };
+
+    loginMutation(payload, {
+      onSuccess: (data) => {
+        // Save data to Redux Store
+        dispatch(
+          loginSuccess({
+            authToken: data.accessToken,
+            refreshToken: data.refreshToken,
+            expiresAt: data.accessTokenExpiry,
+            refreshTokenExpiresAt: data.refreshTokenExpiry,
+            username: data.username,
+            storeId: data.storeId,
+            plazaId: data.plazaId,
+            plazaName: data.plazaName,
+            deviceId: data.deviceId,
+            pinpadIp: data.pinpadIp,
+            pinpadPort: data.pinpadPort,
+            printerIp: data.printerIp,
+            printerPort: data.printerPort,
+            kioskSerialNo: data.kioskSerialNo,
+            idleCarouselTimeout: data.idleCarouselTimeout,
+          }),
+        );
+
+        navigate(MAIN_ROUTE);
+      },
+      onError: (err) => {
+        console.error("Login Error:", err);
+      },
+    });
   };
 
   return (
@@ -69,15 +102,15 @@ export default function Login() {
           className="flex flex-col gap-4"
         >
           <CustomTextField
-            label="Email"
-            name="email"
-            type="email"
-            placeholder="Enter your email"
-            value={formData.email}
+            label="Username"
+            name="username"
+            type="text"
+            placeholder="Enter your username"
+            value={formData.username}
             onChange={handleChange}
             required
-            error={!!formErrors.email}
-            errorText={formErrors.email}
+            error={!!formErrors.username}
+            errorText={formErrors.username}
           />
 
           <div className="flex flex-col justify-center">

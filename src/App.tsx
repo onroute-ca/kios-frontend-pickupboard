@@ -1,7 +1,7 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-
 import { MAIN_ROUTE, LOGIN } from "./routes/routes";
+import { ProtectedRoute } from "./routes/ProtectedRoute";
 
 const Login = lazy(() => import("./pages/auth/Login"));
 const PickupBoard = lazy(() => import("./pages/pickup-board/PickupBoard"));
@@ -17,7 +17,9 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path={LOGIN} element={<Login />} />
-          <Route path={MAIN_ROUTE} element={<PickupBoard />} />
+          <Route element={<ProtectedRoute />}>
+            <Route path={MAIN_ROUTE} element={<PickupBoard />} />
+          </Route>
           <Route path="*" element={<Navigate to={LOGIN} replace />} />
         </Routes>
       </BrowserRouter>
@@ -26,3 +28,5 @@ function App() {
 }
 
 export default App;
+
+

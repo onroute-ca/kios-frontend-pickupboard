@@ -47,3 +47,45 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
 }
+
+/* Custom Button Dot Loader */
+.dot-loader-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.dot-loader-container .loader {
+  width: 6px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  animation: l5 1s infinite linear alternate;
+}
+
+@keyframes l5 {
+  0% {
+    box-shadow:
+      10px 0 currentColor,
+      -10px 0 color-mix(in srgb, currentColor 20%, transparent);
+    background: currentColor;
+  }
+  33% {
+    box-shadow:
+      10px 0 currentColor,
+      -10px 0 color-mix(in srgb, currentColor 20%, transparent);
+    background: color-mix(in srgb, currentColor 20%, transparent);
+  }
+  66% {
+    box-shadow:
+      10px 0 color-mix(in srgb, currentColor 20%, transparent),
+      -10px 0 currentColor;
+    background: color-mix(in srgb, currentColor 20%, transparent);
+  }
+  100% {
+    box-shadow:
+      10px 0 color-mix(in srgb, currentColor 20%, transparent),
+      -10px 0 currentColor;
+    background: currentColor;
+  }
+}
