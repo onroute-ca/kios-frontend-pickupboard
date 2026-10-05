@@ -14,7 +14,7 @@ const Loading = () => (
 function App() {
   return (
     <Suspense fallback={<Loading />}>
-      <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
         <Routes>
           <Route path={LOGIN} element={<Login />} />
           <Route element={<ProtectedRoute />}>

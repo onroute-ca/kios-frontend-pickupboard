@@ -1,0 +1,132 @@
+name: Deploy Kios Frontend Pickupboard to PREPROD Environment
+
+on:
+  push:
+    branches:
+      - preprod
+
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (defaults to the freshly built preprod-<sha>)"
+        required: false
+        default: ""
+
+env:
+  environment: preprod
+  PREPROD_AKS_RESOURCE_GROUP: ${{ secrets.PREPROD_AKS_RESOURCE_GROUP }}
+  PREPROD_AKS_CLUSTER_NAME: ${{ secrets.PREPROD_AKS_CLUSTER_NAME }}
+  NAMESPACE: pickupboard-preprod
+  ACR_NAME: ${{ secrets.PREPROD_ACR_NAME }}
+  ACR_LOGIN_SERVER: ${{ secrets.PREPROD_ACR_LOGIN_SERVER }}
+  DEPLOYMENT_NAME: kios-frontend-pickupboard-preprod
+
+concurrency:
+  group: preprod-deploy-kios-frontend-pickupboard
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # Preprod AKS and ACR are private (no public endpoint). GitHub-hosted runners
+    # cannot reach them, so the whole job runs on the self-hosted runner inside the
+    # preprod VNet (same runner kios-infra uses for its private jobs).
+    runs-on:
+      - self-hosted
+      - preprod-kios
+    environment: preprod
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Service principal JSON stored as PREPROD_AZURE_CREDENTIALS (shared with backend)
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.PREPROD_AZURE_CREDENTIALS }}
+
+      - name: Generate image tag
+        id: image_tag
+        shell: bash
+        run: |
+          IMAGE_TAG="preprod-${GITHUB_SHA::7}"
+          echo "Generated image tag: ${IMAGE_TAG}"
+          echo "image_tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Login to Azure Container Registry
+        run: az acr login --name "${{ env.ACR_NAME }}"
+
+      # Vite bakes the service URLs at build time -> pass them as Docker build args.
+      # Values are deployed endpoints, never localhost/raw IPs.
+      - name: Build and push image
+        run: |
+          IMAGE="${{ env.ACR_LOGIN_SERVER }}/kios-frontend-pickupboard:${{ steps.image_tag.outputs.image_tag }}"
+          docker build \
+            --build-arg VITE_AUTH_API_BASE_URL="${{ secrets.PREPROD_AUTH_API_BASE_URL }}" \
+            --build-arg VITE_WEBSOCKET_URL="${{ secrets.PREPROD_WEBSOCKET_URL }}" \
+            -t "$IMAGE" .
+          docker push "$IMAGE"
+
+      - name: Set up AKS credentials
+        run: |
+          az aks get-credentials \
+            --resource-group ${{ env.PREPROD_AKS_RESOURCE_GROUP }} \
+            --name ${{ env.PREPROD_AKS_CLUSTER_NAME }} \
+            --overwrite-existing
+
+      # kubelogin is pre-installed on the runner; install only if missing
+      - name: Install kubelogin
+        run: command -v kubelogin >/dev/null || sudo az aks install-cli
+
+      - name: Convert kubeconfig for AAD auth
+        run: kubelogin convert-kubeconfig -l azurecli
+
+      - name: Verify cluster connection
+        run: kubectl cluster-info
+
+      # Namespace is created by the infra repo (kios-infra / aks-namespaces.tf).
+      # Here we only VERIFY it exists — fail fast if infra hasn't been applied yet.
+      - name: Verify namespace exists (created by infra)
+        run: |
+          if ! kubectl get namespace ${{ env.NAMESPACE }}; then
+            echo "::error::Namespace '${{ env.NAMESPACE }}' not found. Apply kios-infra (aks-namespaces.tf) first."
+            exit 1
+          fi
+
+      - name: Deploy application (Deployment + Service)
+        run: kubectl apply -f k8s/preprod/deployment.yaml
+
+      - name: Set image tag
+        run: |
+          IMAGE_TAG="${{ github.event.inputs.image_tag }}"
+          if [ -z "$IMAGE_TAG" ]; then
+            IMAGE_TAG="${{ steps.image_tag.outputs.image_tag }}"
+          fi
+          kubectl set image deployment/${{ env.DEPLOYMENT_NAME }} \
+            ${{ env.DEPLOYMENT_NAME }}=${{ env.ACR_LOGIN_SERVER }}/kios-frontend-pickupboard:${IMAGE_TAG} \
+            -n ${{ env.NAMESPACE }}
+
+      - name: Apply ingress
+        run: kubectl apply -f k8s/preprod/ingress.yaml
+
+      - name: Apply autoscaling (HPA + PDB)
+        run: kubectl apply -f k8s/preprod/hpa.yaml
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/${{ env.DEPLOYMENT_NAME }} \
+            -n ${{ env.NAMESPACE }} --timeout=300s
+
+      - name: Verify pods
+        if: always()
+        run: |
+          kubectl get pods -n ${{ env.NAMESPACE }} -l app=${{ env.DEPLOYMENT_NAME }} -o wide
+          kubectl get events -n ${{ env.NAMESPACE }} --sort-by='.lastTimestamp' | tail -n 20
+
+      # Self-hosted runner: don't leave images/credentials behind between jobs
+      - name: Clean up runner
+        if: always()
+        run: |
+          docker image rm -f "${{ env.ACR_LOGIN_SERVER }}/kios-frontend-pickupboard:${{ steps.image_tag.outputs.image_tag }}" 2>/dev/null || true
+          rm -f ~/.kube/config
+          az logout 2>/dev/null || true

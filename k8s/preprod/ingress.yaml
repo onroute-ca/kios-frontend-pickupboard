@@ -1,0 +1,27 @@
+# Ingress for the frontend pickupboard (preprod)
+# Preprod has no operational-nginx controller, so pickupboard is served under /pickupboard
+# on the shared ingress-nginx controller (class "nginx"). That controller sits on an
+# internal LB published through the firewall public IP (kios-infra firewall.tf DNAT).
+# Vite base and React Router basename are both /pickupboard/.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kios-frontend-pickupboard-preprod
+  namespace: pickupboard-preprod
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    # Strip the prefix: the pod's nginx serves the app from "/"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /pickupboard(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: kios-frontend-pickupboard-preprod
+                port:
+                  number: 80
