@@ -135,7 +135,7 @@ const PickupBoard: React.FC = () => {
           </div>
 
           <div className="custom-scrollbar flex-1 space-y-6 overflow-y-auto bg-[#fcfdfc] p-6">
-            {isLoadingOrders ? (
+            {isLoadingOrders && inProgressOrders.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center space-y-4">
                 <div className="border-t-brand h-16 w-16 animate-spin rounded-full border-8 border-gray-200"></div>
                 <p className="text-muted-text text-xl font-medium">Loading active orders...</p>
@@ -177,7 +177,7 @@ const PickupBoard: React.FC = () => {
           </div>
 
           <div className="custom-scrollbar flex-1 space-y-6 overflow-y-auto bg-[#fcfdfc] p-6">
-            {isLoadingOrders ? (
+            {isLoadingOrders && readyOrders.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center space-y-4">
                 <div className="border-t-brand h-16 w-16 animate-spin rounded-full border-8 border-gray-200"></div>
                 <p className="text-muted-text text-xl font-medium">Loading ready orders...</p>
@@ -226,3 +226,5 @@ const PickupBoard: React.FC = () => {
 };
 
 export default PickupBoard;
+
+
