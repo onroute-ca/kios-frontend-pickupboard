@@ -86,3 +86,4 @@ spec:
       targetPort: 80
       protocol: TCP
       name: http
+# Rebuilt 2026-10-06: DEV_AUTH_API_BASE_URL now https://api-dev.onroute.ca/user-service (was http://52.139.23.0 - blocked as mixed content on the https domain).
