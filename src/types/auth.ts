@@ -8,8 +8,8 @@ export interface LoginResponse {
   username: string;
   plazaId: number;
   plazaName: string;
-  storeId: number;
-  storeName: string;
+  posStoreId: string | number | null;
+  storeName: string | null;
   deviceId: string;
   accessToken: string;
   refreshToken: string;

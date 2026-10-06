@@ -11,14 +11,20 @@ export interface FailedQueueItem {
   reject: (reason?: unknown) => void;
 }
 
-// Catalog Service Axios instance
+// API Service Axios instance
 const apiService = axios.create({
   baseURL: import.meta.env.VITE_AUTH_API_BASE_URL,
   headers: { "Content-Type": "application/json" },
 });
 
+// Order Service Axios instance
+const orderApiService = axios.create({
+  baseURL: import.meta.env.VITE_ORDER_API_BASE_URL,
+  headers: { "Content-Type": "application/json" },
+});
+
 // Apply interceptors to both services
-const allApis = [apiService];
+const allApis = [apiService, orderApiService];
 
 // 1. Request Interceptors
 allApis.forEach((apiInstance) => {
@@ -119,13 +125,13 @@ allApis.forEach((apiInstance) => {
 
           // Using raw axios to prevent interceptor looping
           const res = await axios.post(
-            `${import.meta.env.VITE_AUTH_API_BASE_URL || ""}/v1/user/refresh`,
+            `${import.meta.env.VITE_AUTH_API_BASE_URL || ""}/user/refresh`,
             {},
             {
               headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${currentRefreshToken}`,
-                "X-Device-Type": "TABLET",
+                "X-Device-Type": "DISPLAY",
                 ...(authData.kioskSerialNo && { "X-Serial-No": authData.kioskSerialNo }),
               },
             },
@@ -142,7 +148,7 @@ allApis.forEach((apiInstance) => {
                 expiresAt: data.accessTokenExpiry,
                 refreshTokenExpiresAt: data.refreshTokenExpiry,
                 username: data.username,
-                storeId: data.storeId,
+                storeId: data.posStoreId,
                 storeName: data.storeName,
                 plazaId: data.plazaId,
                 plazaName: data.plazaName,
@@ -200,4 +206,4 @@ allApis.forEach((apiInstance) => {
   );
 });
 
-export { apiService };
+export { apiService, orderApiService };

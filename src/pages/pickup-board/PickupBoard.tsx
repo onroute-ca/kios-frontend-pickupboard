@@ -1,13 +1,23 @@
 import React, { useState, useEffect, useRef } from "react";
-import { CheckCircle2, Clock, Volume2, VolumeX } from "lucide-react";
+import { CheckCircle2, Clock, Volume2, VolumeX, LogOut } from "lucide-react";
 import logo from "../../assets/onroute-logo.svg";
 import { IconBtn } from "../../components/CustomButton";
 import { useWebSocket } from "../../hooks/useWebSocket";
 import { playNewOrderSound } from "../../utils/sound";
+import { useAppDispatch } from "../../store/hooks";
+import { logout } from "../../store/authSlice";
+import { useNavigate } from "react-router-dom";
+import { useLogoutMutation } from "../../services";
+import { LOGIN } from "../../routes";
 
 const PickupBoard: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+
   const [soundEnabled, setSoundEnabled] = useState(true);
   const soundEnabledRef = useRef(soundEnabled);
+
+  const { mutate: logoutMutation } = useLogoutMutation();
 
   useEffect(() => {
     soundEnabledRef.current = soundEnabled;
@@ -25,6 +35,20 @@ const PickupBoard: React.FC = () => {
       if (soundEnabledRef.current) playNewOrderSound();
     },
   });
+
+  const handleLogout = () => {
+    logoutMutation(undefined, {
+      onSuccess: () => {
+        dispatch(logout());
+        navigate(LOGIN, { replace: true });
+      },
+      onError: (err) => {
+        console.error("Logout failed", err);
+        dispatch(logout());
+        navigate(LOGIN, { replace: true });
+      },
+    });
+  };
 
   const ordersList = Array.from(orders.values());
   const inProgressOrders = ordersList.filter((o) => o.displayStatus === "IN_PROGRESS");
@@ -82,6 +106,13 @@ const PickupBoard: React.FC = () => {
             icon={soundEnabled ? Volume2 : VolumeX}
             title={soundEnabled ? "Mute Sounds" : "Unmute Sounds"}
             onClick={() => setSoundEnabled(!soundEnabled)}
+            className="!h-[52px] !w-[52px] rounded-full"
+            size={28}
+          />
+          <IconBtn
+            icon={LogOut}
+            title="Logout"
+            onClick={handleLogout}
             className="!h-[52px] !w-[52px] rounded-full"
             size={28}
           />

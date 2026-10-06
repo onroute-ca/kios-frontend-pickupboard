@@ -1,6 +1,8 @@
 // Native AudioContext Synthesizer (No external files needed)
 const getAudioContext = () => {
-  const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+  const AudioContextClass =
+    window.AudioContext ||
+    (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
   return new AudioContextClass();
 };
 
@@ -10,7 +12,7 @@ const initAudio = () => {
   if (!audioCtx) {
     audioCtx = getAudioContext();
   }
-  if (audioCtx.state === 'suspended') {
+  if (audioCtx.state === "suspended") {
     audioCtx.resume();
   }
   return audioCtx;
@@ -26,7 +28,7 @@ export const playNewOrderSound = () => {
     gainNode.connect(ctx.destination);
 
     // Nice 2-tone chime sound (Ding-Dong)
-    oscillator.type = 'sine';
+    oscillator.type = "sine";
     oscillator.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
     oscillator.frequency.setValueAtTime(659.25, ctx.currentTime + 0.15); // E5
 
@@ -52,7 +54,7 @@ export const playActionSound = () => {
     gainNode.connect(ctx.destination);
 
     // Short pleasant click/pop
-    oscillator.type = 'triangle';
+    oscillator.type = "triangle";
     oscillator.frequency.setValueAtTime(800, ctx.currentTime);
     oscillator.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.1);
 

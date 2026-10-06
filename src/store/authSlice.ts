@@ -7,7 +7,7 @@ export interface AuthState {
   expiresAt: string | null;
   refreshTokenExpiresAt: string | null;
   username: string | null;
-  storeId: number | null;
+  storeId: number | string | null;
   storeName: string | null;
   plazaId: number | null;
   plazaName: string | null;

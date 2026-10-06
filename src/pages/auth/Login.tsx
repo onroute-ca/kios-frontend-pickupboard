@@ -52,7 +52,7 @@ const Login: React.FC = () => {
     const payload = {
       username: formData.username,
       password: formData.password,
-      deviceType: "TABLET",
+      deviceType: "DISPLAY",
     };
 
     loginMutation(payload, {
@@ -65,7 +65,7 @@ const Login: React.FC = () => {
             expiresAt: data.accessTokenExpiry,
             refreshTokenExpiresAt: data.refreshTokenExpiry,
             username: data.username,
-            storeId: data.storeId,
+            storeId: data.posStoreId,
             storeName: data.storeName,
             plazaId: data.plazaId,
             plazaName: data.plazaName,
