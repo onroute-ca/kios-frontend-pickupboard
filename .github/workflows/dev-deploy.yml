@@ -58,6 +58,7 @@ jobs:
           docker build \
             --build-arg VITE_AUTH_API_BASE_URL="${{ secrets.DEV_AUTH_API_BASE_URL }}" \
             --build-arg VITE_WEBSOCKET_URL="${{ secrets.DEV_WEBSOCKET_URL }}" \
+            --build-arg VITE_ORDER_API_BASE_URL="${{ secrets.DEV_ORDER_API_BASE_URL }}" \
             -t "$IMAGE" .
           docker push "$IMAGE"
 
