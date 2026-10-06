@@ -1,15 +1,9 @@
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useRef } from "react";
 import { useAppSelector } from "../store/hooks";
 import { Client } from "@stomp/stompjs";
-
-export interface LivePickupOrder {
-  orderId: number;
-  orderNo: number;
-  storeId: number;
-  guestName: string;
-  displayStatus: "IN_PROGRESS" | "READY" | string;
-  placedAt: number; // Internal timestamp for elapsed time
-}
+import { useGetActiveOrdersList } from "../services";
+import { Order } from "../types/order";
 
 const WS_URL = import.meta.env.VITE_WEBSOCKET_URL as string | undefined;
 
@@ -32,7 +26,7 @@ interface UseWebSocketOptions {
 }
 
 export const useWebSocket = (options?: UseWebSocketOptions) => {
-  const [orders, setOrders] = useState<Map<number, LivePickupOrder>>(new Map());
+  const [orders, setOrders] = useState<Map<number, Order>>(new Map());
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("connecting");
   const [reconnectAttempt, setReconnectAttempt] = useState(0);
   const clientRef = useRef<Client | null>(null);
@@ -48,9 +42,29 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
     optionsRef.current = options;
   }, [options]);
 
+  const { data: activeOrdersData, isLoading: isLoadingOrders } = useGetActiveOrdersList(storeId);
+
+  useEffect(() => {
+    if (activeOrdersData?.orders) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setOrders((prev) => {
+        const newMap = new Map(prev);
+        activeOrdersData.orders.forEach((apiOrder) => {
+          if (!newMap.has(apiOrder.orderId)) {
+            newMap.set(apiOrder.orderId, {
+              ...apiOrder,
+            });
+          }
+        });
+        return newMap;
+      });
+    }
+  }, [activeOrdersData]);
+
   useEffect(() => {
     if (!WS_URL) {
       console.error("VITE_WEBSOCKET_URL is not configured");
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setConnectionStatus("failed");
       return;
     }
@@ -140,7 +154,6 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
                     newMap.set(orderData.orderId, {
                       ...orderData,
                       displayStatus: "IN_PROGRESS",
-                      placedAt: existing?.placedAt || Date.now(),
                     });
                     return newMap;
                   });
@@ -165,9 +178,14 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
                       newMap.set(evt.order.orderId, {
                         ...evt.order,
                         displayStatus: "READY",
-                        placedAt: Date.now(),
                       });
                     }
+                    return newMap;
+                  });
+                } else if (evt.eventType === "ORDER_COLLECTED" && evt.order) {
+                  setOrders((prev) => {
+                    const newMap = new Map(prev);
+                    newMap.delete(evt.order.orderId);
                     return newMap;
                   });
                 }
@@ -219,6 +237,7 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
 
   return {
     orders,
+    isLoadingOrders,
     isConnected,
     connectionStatus,
     reconnectAttempt,
@@ -227,3 +246,4 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
     clearAll,
   };
 };
+

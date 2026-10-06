@@ -1,13 +1,23 @@
-import React, { useState, useEffect, useRef } from "react";
-import { CheckCircle2, Clock, Volume2, VolumeX } from "lucide-react";
+﻿import React, { useState, useEffect, useRef } from "react";
+import { CheckCircle2, Clock, Volume2, VolumeX, LogOut } from "lucide-react";
 import logo from "../../assets/onroute-logo.svg";
 import { IconBtn } from "../../components/CustomButton";
 import { useWebSocket } from "../../hooks/useWebSocket";
 import { playNewOrderSound } from "../../utils/sound";
+import { useAppDispatch } from "../../store/hooks";
+import { logout } from "../../store/authSlice";
+import { useNavigate } from "react-router-dom";
+import { useLogoutMutation } from "../../services";
+import { LOGIN } from "../../routes";
 
 const PickupBoard: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+
   const [soundEnabled, setSoundEnabled] = useState(true);
   const soundEnabledRef = useRef(soundEnabled);
+
+  const { mutate: logoutMutation } = useLogoutMutation();
 
   useEffect(() => {
     soundEnabledRef.current = soundEnabled;
@@ -15,6 +25,7 @@ const PickupBoard: React.FC = () => {
 
   const {
     orders,
+    isLoadingOrders,
     isConnected,
     connectionStatus,
     reconnectAttempt,
@@ -25,6 +36,20 @@ const PickupBoard: React.FC = () => {
       if (soundEnabledRef.current) playNewOrderSound();
     },
   });
+
+  const handleLogout = () => {
+    logoutMutation(undefined, {
+      onSuccess: () => {
+        dispatch(logout());
+        navigate(LOGIN, { replace: true });
+      },
+      onError: (err) => {
+        console.error("Logout failed", err);
+        dispatch(logout());
+        navigate(LOGIN, { replace: true });
+      },
+    });
+  };
 
   const ordersList = Array.from(orders.values());
   const inProgressOrders = ordersList.filter((o) => o.displayStatus === "IN_PROGRESS");
@@ -85,6 +110,13 @@ const PickupBoard: React.FC = () => {
             className="!h-[52px] !w-[52px] rounded-full"
             size={28}
           />
+          <IconBtn
+            icon={LogOut}
+            title="Logout"
+            onClick={handleLogout}
+            className="!h-[52px] !w-[52px] rounded-full"
+            size={28}
+          />
         </div>
       </header>
 
@@ -103,7 +135,12 @@ const PickupBoard: React.FC = () => {
           </div>
 
           <div className="custom-scrollbar flex-1 space-y-6 overflow-y-auto bg-[#fcfdfc] p-6">
-            {inProgressOrders.length === 0 ? (
+            {isLoadingOrders && inProgressOrders.length === 0 ? (
+              <div className="flex h-full flex-col items-center justify-center space-y-4">
+                <div className="border-t-brand h-16 w-16 animate-spin rounded-full border-8 border-gray-200"></div>
+                <p className="text-muted-text text-xl font-medium">Loading active orders...</p>
+              </div>
+            ) : inProgressOrders.length === 0 ? (
               <div className="text-muted-text flex h-full flex-col items-center justify-center space-y-4">
                 <Clock className="h-16 w-16 opacity-50" />
                 <p className="text-3xl font-medium">Waiting for live orders...</p>
@@ -140,7 +177,12 @@ const PickupBoard: React.FC = () => {
           </div>
 
           <div className="custom-scrollbar flex-1 space-y-6 overflow-y-auto bg-[#fcfdfc] p-6">
-            {readyOrders.length === 0 ? (
+            {isLoadingOrders && readyOrders.length === 0 ? (
+              <div className="flex h-full flex-col items-center justify-center space-y-4">
+                <div className="border-t-brand h-16 w-16 animate-spin rounded-full border-8 border-gray-200"></div>
+                <p className="text-muted-text text-xl font-medium">Loading ready orders...</p>
+              </div>
+            ) : readyOrders.length === 0 ? (
               <div className="text-muted-text flex h-full flex-col items-center justify-center space-y-4">
                 <CheckCircle2 className="h-16 w-16 opacity-50" />
                 <p className="text-3xl font-medium">No ready orders</p>
@@ -184,3 +226,5 @@ const PickupBoard: React.FC = () => {
 };
 
 export default PickupBoard;
+
+
