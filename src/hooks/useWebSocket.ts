@@ -42,7 +42,7 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
     optionsRef.current = options;
   }, [options]);
 
-  const { data: activeOrdersData } = useGetActiveOrdersList(storeId);
+  const { data: activeOrdersData, isLoading: isLoadingOrders } = useGetActiveOrdersList(storeId);
 
   useEffect(() => {
     if (activeOrdersData?.orders) {
@@ -237,6 +237,7 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
 
   return {
     orders,
+    isLoadingOrders,
     isConnected,
     connectionStatus,
     reconnectAttempt,
@@ -245,3 +246,4 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
     clearAll,
   };
 };
+

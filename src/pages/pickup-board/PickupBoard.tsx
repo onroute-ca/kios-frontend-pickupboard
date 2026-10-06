@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import { CheckCircle2, Clock, Volume2, VolumeX, LogOut } from "lucide-react";
 import logo from "../../assets/onroute-logo.svg";
 import { IconBtn } from "../../components/CustomButton";
@@ -25,6 +25,7 @@ const PickupBoard: React.FC = () => {
 
   const {
     orders,
+    isLoadingOrders,
     isConnected,
     connectionStatus,
     reconnectAttempt,
@@ -134,7 +135,12 @@ const PickupBoard: React.FC = () => {
           </div>
 
           <div className="custom-scrollbar flex-1 space-y-6 overflow-y-auto bg-[#fcfdfc] p-6">
-            {inProgressOrders.length === 0 ? (
+            {isLoadingOrders ? (
+              <div className="flex h-full flex-col items-center justify-center space-y-4">
+                <div className="border-t-brand h-16 w-16 animate-spin rounded-full border-8 border-gray-200"></div>
+                <p className="text-muted-text text-xl font-medium">Loading active orders...</p>
+              </div>
+            ) : inProgressOrders.length === 0 ? (
               <div className="text-muted-text flex h-full flex-col items-center justify-center space-y-4">
                 <Clock className="h-16 w-16 opacity-50" />
                 <p className="text-3xl font-medium">Waiting for live orders...</p>
@@ -171,7 +177,12 @@ const PickupBoard: React.FC = () => {
           </div>
 
           <div className="custom-scrollbar flex-1 space-y-6 overflow-y-auto bg-[#fcfdfc] p-6">
-            {readyOrders.length === 0 ? (
+            {isLoadingOrders ? (
+              <div className="flex h-full flex-col items-center justify-center space-y-4">
+                <div className="border-t-brand h-16 w-16 animate-spin rounded-full border-8 border-gray-200"></div>
+                <p className="text-muted-text text-xl font-medium">Loading ready orders...</p>
+              </div>
+            ) : readyOrders.length === 0 ? (
               <div className="text-muted-text flex h-full flex-col items-center justify-center space-y-4">
                 <CheckCircle2 className="h-16 w-16 opacity-50" />
                 <p className="text-3xl font-medium">No ready orders</p>
