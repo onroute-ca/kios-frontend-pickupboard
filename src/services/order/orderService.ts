@@ -1,4 +1,4 @@
-import { useQuery, UseQueryResult } from "@tanstack/react-query";
+﻿import { useQuery, UseQueryResult } from "@tanstack/react-query";
 import { orderApiService } from "../../api/api";
 import { ActiveOrdersResponse } from "../../types/order";
 
@@ -13,8 +13,9 @@ export const useGetActiveOrdersList = (
   return useQuery({
     queryKey: ["active-orders-list", storeId],
     queryFn: () => getActiveOrders(storeId!),
-    retry: 0,
+    retry: 3,
     gcTime: 0,
     enabled: !!storeId,
   });
 };
+

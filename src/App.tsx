@@ -1,7 +1,9 @@
-import { lazy, Suspense } from "react";
+﻿import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { MAIN_ROUTE, LOGIN } from "./routes/routes";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const Login = lazy(() => import("./pages/auth/Login"));
 const PickupBoard = lazy(() => import("./pages/pickup-board/PickupBoard"));
@@ -14,6 +16,13 @@ const Loading = () => (
 function App() {
   return (
     <Suspense fallback={<Loading />}>
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar
+        pauseOnHover
+        theme="colored"
+      />
       <BrowserRouter basename={import.meta.env.BASE_URL}>
         <Routes>
           <Route path={LOGIN} element={<Login />} />
@@ -28,5 +37,3 @@ function App() {
 }
 
 export default App;
-
-
