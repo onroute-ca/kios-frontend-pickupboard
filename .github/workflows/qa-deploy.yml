@@ -57,6 +57,7 @@ jobs:
           IMAGE="${{ env.ACR_LOGIN_SERVER }}/kios-frontend-pickupboard:${{ steps.image_tag.outputs.image_tag }}"
           docker build \
             --build-arg VITE_AUTH_API_BASE_URL="${{ secrets.QA_AUTH_API_BASE_URL }}" \
+            --build-arg VITE_ORDER_API_BASE_URL="${{ secrets.QA_ORDER_API_BASE_URL }}" \
             --build-arg VITE_WEBSOCKET_URL="${{ secrets.QA_WEBSOCKET_URL }}" \
             -t "$IMAGE" .
           docker push "$IMAGE"
