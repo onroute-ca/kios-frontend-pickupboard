@@ -31,6 +31,8 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
   const [reconnectAttempt, setReconnectAttempt] = useState(0);
   const clientRef = useRef<Client | null>(null);
   const reconnectRef = useRef<() => void>(() => {});
+  const collectedOrderIdsRef = useRef<Set<number>>(new Set());
+  const locallyFiredOrderIdsRef = useRef<Set<number>>(new Set());
   const isConnected = connectionStatus === "connected";
 
   const auth = useAppSelector((state) => state.auth);
@@ -42,20 +44,39 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
     optionsRef.current = options;
   }, [options]);
 
-  const { data: activeOrdersData, isLoading: isLoadingOrders } = useGetActiveOrdersList(storeId);
+  const {
+    data: activeOrdersData,
+    isLoading: isLoadingOrders,
+    refetch,
+  } = useGetActiveOrdersList(storeId);
 
   useEffect(() => {
     if (activeOrdersData?.orders) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setOrders((prev) => {
-        const newMap = new Map(prev);
+        const newMap = new Map<number, Order>();
+
+        // 1. Apply authoritative API data
         activeOrdersData.orders.forEach((apiOrder) => {
-          if (!newMap.has(apiOrder.orderId)) {
+          if (!collectedOrderIdsRef.current.has(apiOrder.orderId)) {
+            const existingLocal = prev.get(apiOrder.orderId);
+            // Protect local READY state if WS delivered it before REST API caught up
+            const isLocalAdvanced =
+              existingLocal?.displayStatus === "READY" && apiOrder.displayStatus === "IN_PROGRESS";
+
             newMap.set(apiOrder.orderId, {
               ...apiOrder,
+              displayStatus: isLocalAdvanced ? "READY" : apiOrder.displayStatus,
             });
           }
         });
+
+        // 2. Preserve orders freshly fired via WebSocket that aren't in the REST snapshot yet
+        locallyFiredOrderIdsRef.current.forEach((id) => {
+          if (!newMap.has(id) && prev.has(id) && !collectedOrderIdsRef.current.has(id)) {
+            newMap.set(id, prev.get(id)!);
+          }
+        });
+
         return newMap;
       });
     }
@@ -90,10 +111,7 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
       if (disposed || reconnectTimer) return;
 
       if (attempts >= MAX_RECONNECT_ATTEMPTS) {
-        console.error(`WebSocket reconnect failed after ${attempts} attempts`);
-        setConnectionStatus("failed");
-        client.deactivate();
-        return;
+        console.warn(`WebSocket reconnect attempt ${attempts} (capped delay)`);
       }
 
       attempts += 1;
@@ -113,6 +131,7 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
     // Manual / event-driven reconnect: resets the attempt counter and retries immediately
     const reconnectNow = () => {
       if (disposed || client.connected) return;
+      refetch().catch(console.error);
       clearReconnectTimer();
       attempts = 0;
       setReconnectAttempt(0);
@@ -136,6 +155,8 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
         setConnectionStatus("connected");
         console.log("Connected to STOMP WebSocket (Display)");
 
+        refetch().catch(console.error);
+
         client.subscribe(`/topic/stores/${storeId}/orderUpdates/display`, (message) => {
           try {
             const payload = JSON.parse(message.body);
@@ -147,6 +168,7 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
                     const orderData = evt.order;
                     const existing = newMap.get(orderData.orderId);
 
+                    locallyFiredOrderIdsRef.current.add(orderData.orderId);
                     if (!existing && optionsRef.current?.onNewOrder) {
                       optionsRef.current.onNewOrder();
                     }
@@ -183,6 +205,8 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
                     return newMap;
                   });
                 } else if (evt.eventType === "ORDER_COLLECTED" && evt.order) {
+                  collectedOrderIdsRef.current.add(evt.order.orderId);
+
                   setOrders((prev) => {
                     const newMap = new Map(prev);
                     newMap.delete(evt.order.orderId);
@@ -225,7 +249,7 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
       document.removeEventListener("visibilitychange", handleVisibility);
       client.deactivate();
     };
-  }, [storeId, token]);
+  }, [storeId, token, refetch]);
 
   const reconnect = () => reconnectRef.current();
 
@@ -246,4 +270,3 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
     clearAll,
   };
 };
-

@@ -140,7 +140,7 @@ const Login: React.FC = () => {
                 <IconButton
                   onClick={() => setShowPassword(!showPassword)}
                   size="small"
-                  tabIndex={-1}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                   sx={{ p: 0.5, color: "#64748b" }}
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
