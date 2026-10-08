@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "start:dev": "vite --mode dev",
+    "start:dev": "node api.js && vite --mode dev",
     "build": "tsc -b && vite build",
     "build:dev": "tsc -b && vite build --mode dev",
-    "start:qa": "vite --mode qa",
+    "start:qa": "node api.js && vite --mode qa",
     "build:qa": "tsc -b && vite build --mode qa",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -57,4 +57,3 @@
     "vite": "^8.3.0"
   }
 }
-
