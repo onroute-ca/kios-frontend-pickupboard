@@ -1,4 +1,4 @@
-import axios, { AxiosError, type AxiosResponse } from "axios";
+﻿import axios, { AxiosError, type AxiosResponse } from "axios";
 import { toast } from "react-toastify";
 
 const authServiceApi = axios.create({
@@ -21,7 +21,11 @@ authServiceApi.interceptors.response.use(
         responseData.code.includes("-ERR-"))
     ) {
       const errorMessage =
-        responseData.message || responseData.error || `An error occurred (${responseData.code}).`;
+        responseData.message ||
+        responseData.detail ||
+        responseData.error ||
+        responseData.title ||
+        `An error occurred (${responseData.code}).`;
       toast.error(errorMessage);
 
       const errorObj = new Error(errorMessage) as Error & {
@@ -38,8 +42,14 @@ authServiceApi.interceptors.response.use(
     // Fallback error handler
     console.error("API Error:", error.message);
 
-    const errorData = error.response?.data as { message?: string } | undefined;
-    const errorMessage = errorData?.message || error.message || "An unexpected error occurred.";
+    const errorData = error.response?.data as
+      { message?: string; detail?: string; title?: string } | undefined;
+    const errorMessage =
+      errorData?.message ||
+      errorData?.detail ||
+      errorData?.title ||
+      error.message ||
+      "An unexpected error occurred.";
     // Don't show toast for 404s to avoid spam when checking if resources exist
     if (error.response?.status !== 404) {
       toast.error(errorMessage);

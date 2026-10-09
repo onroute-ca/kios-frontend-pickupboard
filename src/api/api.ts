@@ -1,4 +1,4 @@
-import axios, { AxiosError, type AxiosResponse } from "axios";
+﻿import axios, { AxiosError, type AxiosResponse } from "axios";
 import { LOGIN } from "../routes/routes";
 import { toast } from "react-toastify";
 import { store } from "../store/store";
@@ -101,89 +101,20 @@ allApis.forEach((apiInstance) => {
 
       // Check if error is due to token expiration
       if (error.response?.status === 401 && !originalRequest._retry) {
-        if (isRefreshing) {
-          // If already refreshing, add to queue
-          return new Promise<string>((resolve, reject) => {
-            failedQueue.push({ resolve, reject });
-          })
-            .then((token: string) => {
-              originalRequest.headers.Authorization = `Bearer ${token}`;
-              return apiInstance(originalRequest);
-            })
-            .catch((err: unknown) => Promise.reject(err));
-        }
-
         originalRequest._retry = true;
-        isRefreshing = true;
 
         try {
-          const authData = store.getState().auth;
-          const currentRefreshToken = authData.refreshToken;
-          if (!currentRefreshToken) {
-            throw new Error("No refresh token available.");
-          }
-
-          // Using raw axios to prevent interceptor looping
-          const res = await axios.post(
-            `${import.meta.env.VITE_AUTH_API_BASE_URL || ""}/user/refresh`,
-            {},
-            {
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${currentRefreshToken}`,
-                "X-Device-Type": "DISPLAY",
-                ...(authData.kioskSerialNo && { "X-Serial-No": authData.kioskSerialNo }),
-              },
-            },
-          );
-
-          const data = res.data;
-          const newToken = data.accessToken;
-
-          if (newToken) {
-            store.dispatch(
-              loginSuccess({
-                authToken: data.accessToken,
-                refreshToken: data.refreshToken,
-                expiresAt: data.accessTokenExpiry,
-                refreshTokenExpiresAt: data.refreshTokenExpiry,
-                username: data.username,
-                storeId: data.posStoreId,
-                storeName: data.storeName,
-                plazaId: data.plazaId,
-                plazaName: data.plazaName,
-                deviceId: data.deviceId,
-                pinpadIp: data.pinpadIp,
-                pinpadPort: data.pinpadPort,
-                printerIp: data.printerIp,
-                printerPort: data.printerPort,
-                kioskSerialNo: data.kioskSerialNo,
-                idleCarouselTimeout: data.idleCarouselTimeout,
-              }),
-            );
-
-            originalRequest.headers.Authorization = `Bearer ${newToken}`;
-            processQueue(null, newToken);
-            isRefreshing = false;
-            return apiInstance(originalRequest);
-          } else {
-            throw new Error("Failed to acquire new token.");
-          }
+          const newToken = await forceTokenRefresh();
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          return apiInstance(originalRequest);
         } catch (refreshError: unknown) {
-          // If refresh fails, clear queue and redirect to login
-          processQueue(refreshError, null);
-          isRefreshing = false;
-          console.error("refreshError", refreshError);
-
-          console.error("Session expired. Please login again.");
-          toast.error("Session expired. Please login again.");
-
-          setTimeout(() => doLogout(), 3000);
           return Promise.reject(refreshError);
         }
       } else if (error.response?.status === 403) {
-        const errorData = error.response?.data as { message?: string } | undefined;
-        const errorMessage = errorData?.message || "Permission denied or account inactive.";
+        const errorData = error.response?.data as
+          { message?: string; detail?: string; title?: string } | undefined;
+        const errorMessage =
+          errorData?.message || errorData?.detail || errorData?.title || "Permission denied.";
         console.error(error, errorMessage);
         toast.error(errorMessage);
 
@@ -193,8 +124,14 @@ allApis.forEach((apiInstance) => {
         // Fallback error handler
         console.error("API Error:", error.message);
 
-        const errorData = error.response?.data as { message?: string } | undefined;
-        const errorMessage = errorData?.message || error.message || "An unexpected error occurred.";
+        const errorData = error.response?.data as
+          { message?: string; detail?: string; title?: string } | undefined;
+        const errorMessage =
+          errorData?.message ||
+          errorData?.detail ||
+          errorData?.title ||
+          error.message ||
+          "An unexpected error occurred.";
         // Don't show toast for 404s to avoid spam when checking if resources exist
         if (error.response?.status !== 404) {
           toast.error(errorMessage);
@@ -205,5 +142,80 @@ allApis.forEach((apiInstance) => {
     },
   );
 });
+
+export const forceTokenRefresh = async () => {
+  if (isRefreshing) {
+    return new Promise<string>((resolve, reject) => {
+      failedQueue.push({ resolve, reject });
+    });
+  }
+
+  isRefreshing = true;
+  const currentRefreshToken = store.getState().auth.refreshToken;
+
+  try {
+    const authData = store.getState().auth;
+    if (!currentRefreshToken) {
+      throw new Error("No refresh token available.");
+    }
+
+    const res = await axios.post(
+      `${import.meta.env.VITE_AUTH_API_BASE_URL || ""}/user/refresh`,
+      {},
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${currentRefreshToken}`,
+          "X-Device-Type": "DISPLAY",
+          ...(authData.kioskSerialNo && { "X-Serial-No": authData.kioskSerialNo }),
+        },
+      },
+    );
+
+    const data = res.data;
+    const newToken = data.accessToken;
+
+    if (newToken && store.getState().auth.refreshToken === currentRefreshToken) {
+      store.dispatch(
+        loginSuccess({
+          authToken: data.accessToken,
+          refreshToken: data.refreshToken,
+          expiresAt: data.accessTokenExpiry,
+          refreshTokenExpiresAt: data.refreshTokenExpiry,
+          username: data.username,
+          storeId: data.posStoreId,
+          storeName: data.storeName,
+          plazaId: data.plazaId,
+          plazaName: data.plazaName,
+          deviceId: data.deviceId,
+          pinpadIp: data.pinpadIp,
+          pinpadPort: data.pinpadPort,
+          printerIp: data.printerIp,
+          printerPort: data.printerPort,
+          kioskSerialNo: data.kioskSerialNo,
+          idleCarouselTimeout: data.idleCarouselTimeout,
+        }),
+      );
+
+      processQueue(null, newToken);
+      isRefreshing = false;
+      return newToken;
+    } else {
+      throw new Error("Failed to acquire new token.");
+    }
+  } catch (refreshError: unknown) {
+    if (store.getState().auth.refreshToken !== currentRefreshToken) {
+      isRefreshing = false;
+      throw refreshError;
+    }
+    processQueue(refreshError, null);
+    isRefreshing = false;
+    console.error("Session expired. Please login again.");
+    toast.error("Session expired. Please login again.");
+
+    setTimeout(() => doLogout(), 3000);
+    throw refreshError;
+  }
+};
 
 export { apiService, orderApiService };
