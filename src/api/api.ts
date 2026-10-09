@@ -151,9 +151,10 @@ export const forceTokenRefresh = async () => {
   }
 
   isRefreshing = true;
+  const currentRefreshToken = store.getState().auth.refreshToken;
+
   try {
     const authData = store.getState().auth;
-    const currentRefreshToken = authData.refreshToken;
     if (!currentRefreshToken) {
       throw new Error("No refresh token available.");
     }
@@ -174,7 +175,7 @@ export const forceTokenRefresh = async () => {
     const data = res.data;
     const newToken = data.accessToken;
 
-    if (newToken && store.getState().auth.isAuthenticated) {
+    if (newToken && store.getState().auth.refreshToken === currentRefreshToken) {
       store.dispatch(
         loginSuccess({
           authToken: data.accessToken,
@@ -203,6 +204,10 @@ export const forceTokenRefresh = async () => {
       throw new Error("Failed to acquire new token.");
     }
   } catch (refreshError: unknown) {
+    if (store.getState().auth.refreshToken !== currentRefreshToken) {
+      isRefreshing = false;
+      throw refreshError;
+    }
     processQueue(refreshError, null);
     isRefreshing = false;
     console.error("Session expired. Please login again.");
