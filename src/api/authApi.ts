@@ -24,6 +24,7 @@ authServiceApi.interceptors.response.use(
         responseData.message ||
         responseData.detail ||
         responseData.error ||
+        responseData.title ||
         `An error occurred (${responseData.code}).`;
       toast.error(errorMessage);
 

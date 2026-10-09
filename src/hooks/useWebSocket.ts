@@ -283,5 +283,6 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
     maxReconnectAttempts: MAX_RECONNECT_ATTEMPTS,
     reconnect,
     clearAll,
+    setOrders,
   };
 };

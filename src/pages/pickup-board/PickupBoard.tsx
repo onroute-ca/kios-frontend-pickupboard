@@ -32,11 +32,6 @@ const PickupBoard: React.FC = () => {
     soundEnabledRef.current = soundEnabled;
   }, [soundEnabled]);
 
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
   const {
     orders,
     isLoadingOrders,
@@ -44,6 +39,7 @@ const PickupBoard: React.FC = () => {
     connectionStatus,
     orderDisplayWindowSeconds,
     reconnect,
+    setOrders,
   } = useWebSocket({
     onOrderReady: () => {
       if (soundEnabledRef.current) playNewOrderSound();
@@ -64,12 +60,36 @@ const PickupBoard: React.FC = () => {
     });
   };
 
-  const windowMs = (orderDisplayWindowSeconds || 21600) * 1000;
+  const windowMs = orderDisplayWindowSeconds * 1000;
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const currentNow = Date.now();
+      setNow(currentNow);
+      if (currentNow % 5000 < 1000) {
+        setOrders((prev) => {
+          let changed = false;
+          const next = new Map(prev);
+          for (const [id, order] of next.entries()) {
+            let str = order.createdAt;
+            if (str.includes(" ")) str = str.replace(" ", "T");
+            if (!/(?:Z|[+-]\d{2}:\d{2})$/i.test(str)) str += "Z";
+            if (currentNow - new Date(str).getTime() > windowMs) {
+              next.delete(id);
+              changed = true;
+            }
+          }
+          return changed ? next : prev;
+        });
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [windowMs, setOrders]);
 
   const ordersList = Array.from(orders.values()).filter((o) => {
     let str = o.createdAt;
     if (str.includes(" ")) str = str.replace(" ", "T");
-    if (!str.endsWith("Z")) str += "Z";
+    if (!/(?:Z|[+-]\d{2}:\d{2})$/i.test(str)) str += "Z";
     const start = new Date(str).getTime();
     return now - start <= windowMs;
   });

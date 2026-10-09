@@ -111,9 +111,10 @@ allApis.forEach((apiInstance) => {
           return Promise.reject(refreshError);
         }
       } else if (error.response?.status === 403) {
-        const errorData = error.response?.data as { message?: string; detail?: string } | undefined;
+        const errorData = error.response?.data as
+          { message?: string; detail?: string; title?: string } | undefined;
         const errorMessage =
-          errorData?.message || errorData?.detail || "Permission denied or account inactive.";
+          errorData?.message || errorData?.detail || errorData?.title || "Permission denied.";
         console.error(error, errorMessage);
         toast.error(errorMessage);
 
@@ -173,7 +174,7 @@ export const forceTokenRefresh = async () => {
     const data = res.data;
     const newToken = data.accessToken;
 
-    if (newToken) {
+    if (newToken && store.getState().auth.isAuthenticated) {
       store.dispatch(
         loginSuccess({
           authToken: data.accessToken,
