@@ -4,6 +4,7 @@ import { useAppSelector } from "../store/hooks";
 import { Client } from "@stomp/stompjs";
 import { useGetActiveOrdersList } from "../services";
 import { Order } from "../types/order";
+import { forceTokenRefresh } from "../api/api";
 
 const WS_URL = import.meta.env.VITE_WEBSOCKET_URL as string | undefined;
 
@@ -36,7 +37,7 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
   const isConnected = connectionStatus === "connected";
 
   const auth = useAppSelector((state) => state.auth);
-  const storeId = auth.storeId?.toString() || "6100131";
+  const storeId = auth.storeId?.toString() || "";
   const token = auth.authToken;
 
   const optionsRef = useRef(options);
@@ -220,8 +221,21 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
           }
         });
       },
-      onStompError: (frame) => {
+      onStompError: async (frame) => {
         console.error("STOMP error", frame.headers["message"], frame.body);
+        const errorMsg = frame.headers["message"]?.toLowerCase() || "";
+        if (
+          errorMsg.includes("session is not active") ||
+          errorMsg.includes("expired") ||
+          errorMsg.includes("logged out")
+        ) {
+          console.warn("WebSocket token expired. Force refreshing token...");
+          try {
+            await forceTokenRefresh();
+          } catch (err) {
+            console.error("Failed to refresh token via WebSocket error", err);
+          }
+        }
       },
       onWebSocketClose: () => {
         // client.active is false when we closed it ourselves (unmount / restart)
@@ -261,6 +275,7 @@ export const useWebSocket = (options?: UseWebSocketOptions) => {
 
   return {
     orders,
+    orderDisplayWindowSeconds: activeOrdersData?.orderDisplayWindowSeconds ?? 21600,
     isLoadingOrders,
     isConnected,
     connectionStatus,

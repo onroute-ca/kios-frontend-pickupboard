@@ -14,8 +14,17 @@ const PickupBoard: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    const stored = localStorage.getItem("pickupboard_sound_enabled");
+    return stored !== null ? stored === "true" : true;
+  });
+  const toggleSound = () => {
+    const newState = !soundEnabled;
+    setSoundEnabled(newState);
+    localStorage.setItem("pickupboard_sound_enabled", String(newState));
+  };
   const soundEnabledRef = useRef(soundEnabled);
+  const [now, setNow] = useState(() => Date.now());
 
   const { mutate: logoutMutation } = useLogoutMutation();
 
@@ -23,13 +32,17 @@ const PickupBoard: React.FC = () => {
     soundEnabledRef.current = soundEnabled;
   }, [soundEnabled]);
 
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const {
     orders,
     isLoadingOrders,
     isConnected,
     connectionStatus,
-    reconnectAttempt,
-    maxReconnectAttempts,
+    orderDisplayWindowSeconds,
     reconnect,
   } = useWebSocket({
     onOrderReady: () => {
@@ -51,7 +64,15 @@ const PickupBoard: React.FC = () => {
     });
   };
 
-  const ordersList = Array.from(orders.values());
+  const windowMs = (orderDisplayWindowSeconds || 21600) * 1000;
+
+  const ordersList = Array.from(orders.values()).filter((o) => {
+    let str = o.createdAt;
+    if (str.includes(" ")) str = str.replace(" ", "T");
+    if (!str.endsWith("Z")) str += "Z";
+    const start = new Date(str).getTime();
+    return now - start <= windowMs;
+  });
   const inProgressOrders = ordersList.filter((o) => o.displayStatus === "IN_PROGRESS");
   const readyOrders = ordersList.filter((o) => o.displayStatus === "READY");
 
@@ -98,15 +119,14 @@ const PickupBoard: React.FC = () => {
             >
               {connectionStatus === "connected" && "Live"}
               {connectionStatus === "connecting" && "Connecting"}
-              {connectionStatus === "reconnecting" &&
-                `Reconnecting ${reconnectAttempt}/${maxReconnectAttempts}`}
-              {connectionStatus === "failed" && "Offline · Retry"}
+              {connectionStatus === "reconnecting" && "Reconnecting"}
+              {connectionStatus === "failed" && "Offline"}
             </span>
           </button>
           <IconBtn
             icon={soundEnabled ? Volume2 : VolumeX}
             title={soundEnabled ? "Mute Sounds" : "Unmute Sounds"}
-            onClick={() => setSoundEnabled(!soundEnabled)}
+            onClick={toggleSound}
             className="!h-[52px] !w-[52px] rounded-full"
             size={28}
           />
@@ -226,5 +246,3 @@ const PickupBoard: React.FC = () => {
 };
 
 export default PickupBoard;
-
-

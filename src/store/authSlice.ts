@@ -1,4 +1,4 @@
-import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+﻿import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
 export interface AuthState {
   isAuthenticated: boolean;
@@ -105,6 +105,7 @@ const authSlice = createSlice({
 
       try {
         sessionStorage.clear();
+        localStorage.removeItem("pickupboard_sound_enabled");
       } catch (err) {
         console.error("Failed to clear storage on logout:", err);
       }

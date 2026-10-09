@@ -23,6 +23,7 @@ export interface Order {
   plazaId: number;
   pickupLocationId: number;
   pickupTime: string;
+  createdAt: string;
   guestName: string;
   displayStatus: "IN_PROGRESS" | "READY" | "COLLECTED" | string;
   brands: Brand[];
@@ -30,5 +31,6 @@ export interface Order {
 
 export interface ActiveOrdersResponse {
   storeId: number;
+  orderDisplayWindowSeconds: number;
   orders: Order[];
 }
